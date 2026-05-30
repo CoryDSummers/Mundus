@@ -1,8 +1,9 @@
 #pragma once
 #include <algorithm>
 #include <limits>
-#include <glm/vec2.hpp>
-#include <glm/common.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "image/rgb.h"
 #include "image/image.h"
 
@@ -206,5 +207,14 @@ namespace image
       DrawLine(image, color, vertices[i], vertices[i+1], offset);
     }
     DrawLine(image, color, vertices[vertices.size() - 1], vertices[0]);
+  }
+  inline void Transform(VertexArray & vertices, glm::vec2 translate = glm::vec2(0.0f), glm::vec2 scale = {1.f, 1.f}, float rotate = 0.f)
+  {
+    glm::mat4 transform = glm::mat3(1.0f);
+    transform = glm::translate(transform, glm::vec3(translate, 1.f));
+    transform = glm::rotate(transform,    glm::radians(rotate), {0.f, 1.f, 0.f});
+    transform = glm::scale(transform,     glm::vec3{scale, 1.f});
+    std::transform(vertices.begin(), vertices.end(), vertices.begin(),
+    [&transform](const glm::vec2 & v) { return glm::vec2(transform * glm::vec4(v, 1.0f, 1.f));});
   }
 }

@@ -4,6 +4,9 @@ target_include_directories(Mundus PUBLIC
 )
 
 add_subdirectory("simd")
+add_subdirectory("terrain")
+add_subdirectory("voronoi")
+add_subdirectory("noise")
 
 set_target_properties(Mundus PROPERTIES
     CXX_STANDARD 20
@@ -11,4 +14,5 @@ set_target_properties(Mundus PROPERTIES
     CXX_EXTENSIONS NO
 )
 
-target_link_libraries(Mundus PRIVATE glm::glm)
+target_link_libraries(Mundus PRIVATE simd noise voronoi terrain)
+target_link_libraries(Mundus PRIVATE glm::glm )

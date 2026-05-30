@@ -17,9 +17,9 @@ namespace mundus::terrain::hex
     Hex(ScalarType q, ScalarType r);
     Hex(VectorType const & coord);
 
-    ScalarType Q() { return coord_.x; }
-    ScalarType R() { return coord_.y; }
-    ScalarType S() { return coord_.z; }
+    ScalarType Q() { return coords_.x; }
+    ScalarType R() { return coords_.y; }
+    ScalarType S() { return coords_.z; }
 
     Neighbors GetNeighbors() const;
     ScalarType Length() const;
@@ -29,37 +29,37 @@ namespace mundus::terrain::hex
 
     Hex operator+(const Hex &other) const
     {
-      VectorType result = coords + other.coords;
+      VectorType result = coords_ + other.coords_;
       return Hex(result);
     }
 
     Hex operator-(const Hex &other) const
     {
-      VectorType result = coords - other.coords;
-      return Hex(res);
+      VectorType result = coords_ - other.coords_;
+      return Hex(result);
     }
 
     bool operator==(const Hex &other) const
     {
-      return coords == other.coords;
+      return coords_ == other.coords_;
     }
 
   protected:
-    VectorType coord_;
+    VectorType coords_;
   };
   template<Vector3D VectorType>
   Hex<VectorType>::Hex(ScalarType q, ScalarType r, ScalarType s)
-  : coord_(q, r, s)
+  : coords_(q, r, s)
   {
   }
   template<Vector3D VectorType>
   Hex<VectorType>::Hex(ScalarType q, ScalarType r)
-    : coord_(q, r, -q - r)
+    : coords_(q, r, -q - r)
     {
     }
   template<Vector3D VectorType>
   Hex<VectorType>::Hex(VectorType const & coord)
-    : coord_(coord)
+    : coords_(coord)
   { 
   }
   template<Vector3D VectorType>
@@ -72,7 +72,7 @@ namespace mundus::terrain::hex
     Neighbors neighbors;
     for(std::size_t i = 0; i < k_directions.size(); ++i)
     {
-      neighbors[i] = *this + dir;
+      neighbors[i] = *this + k_directions;
     }
     return neighbors;
   }
@@ -81,7 +81,7 @@ namespace mundus::terrain::hex
   template<Vector3D VectorType>
   Hex<VectorType>::ScalarType Hex<VectorType>::Length() const
   {
-    glm::ivec3 absolute_coords = glm::abs(glm::vec3(coord_.x, coord_.y, coord_.z));
+    glm::ivec3 absolute_coords = glm::abs(glm::vec3(coords_.x, coords_.y, coords_.z));
     return (absolute_coords.x + absolute_coords.y + absolute_coords.z) / 2;
   }
 
@@ -91,7 +91,7 @@ namespace mundus::terrain::hex
   template<Vector3D VectorType>
   Hex<VectorType>::ScalarType Hex<VectorType>::Distance(const Hex<VectorType> & rhs)
   {
-    return (*this - other).length();
+    return (*this - rhs).length();
   }
 
   template<Vector3D VectorType>

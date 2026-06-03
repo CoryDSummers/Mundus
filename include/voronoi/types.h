@@ -39,9 +39,12 @@ namespace voronoi
 {
   struct Cell;
 
-  using Point        = glm::ivec2;
-  using Vertex       = glm::ivec2;
-  using VertexArray  = std::vector<Vertex>;
-  using PointArray   = std::vector<Point>;
-  using CellArray    = std::vector<Cell>;
+  using Point       = glm::vec2;
+  using Vertex      = glm::vec2;
+  using VertexArray = std::vector<Vertex>;
+  using PointArray  = std::vector<Point>;
+  using CellArray   = std::vector<Cell>;
+  
+  using IntegerPoint      = glm::ivec2;
+  using IntegerPointArray = std::vector<IntegerPoint>;
 }

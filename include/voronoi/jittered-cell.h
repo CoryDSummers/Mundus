@@ -5,11 +5,11 @@
 #include "voronoi/types.h"
 namespace voronoi
 {
-  inline PointArray GenerateJitteredSeeds(int map_width, int map_height, int grid_columns, int grid_rows, std::uint32_t seed)
+  inline IntegerPointArray GenerateJitteredSeeds(int map_width, int map_height, int grid_columns, int grid_rows, std::uint32_t seed)
   {
 
     std::mt19937 gen(seed);
-    PointArray seeds;
+    IntegerPointArray seeds;
     seeds.reserve(grid_columns * grid_rows);
 
     // Calculate the width and height of each grid cell
@@ -35,7 +35,7 @@ namespace voronoi
         int final_x = center_x + jitter_x(gen);
         int final_y = center_y + jitter_y(gen);
 
-        seeds.push_back(Point(final_x, final_y));
+        seeds.push_back(IntegerPoint(final_x, final_y));
       }
     }
     return seeds;

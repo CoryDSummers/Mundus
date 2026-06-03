@@ -30,7 +30,11 @@ namespace image
     int error = dxdy.x - dxdy.y;
     while (true)
     {
-      image[p0.y + offset][p0.x + offset] = color;
+      if (0 <= p0.y + offset && 0 <= p0.x + offset &&
+          p0.y + offset < image.Height() && p0.x + offset <= image.Width())
+      {
+        image[p0.y + offset][p0.x + offset] = color;
+      }
       if (p0.x == p1.x && p0.y == p1.y)
         break;
       int error_2 = 2 * error;
@@ -82,7 +86,7 @@ namespace image
       const glm::vec2 &vertice_i = vertices[i];
       const glm::vec2 &vertice_j = vertices[j];
       if (
-          vertice_i.y < fpixel_y && vertice_j.y >= fpixel_y || vertice_j.y < fpixel_y && vertice_i.y >= fpixel_y)
+          (vertice_i.y < fpixel_y && vertice_j.y >= fpixel_y) || (vertice_j.y < fpixel_y && vertice_i.y >= fpixel_y))
       {
         nodes[node_index] = static_cast<int>(vertice_i.x + (pixel_y - vertice_i.y) / (vertice_j.y - vertice_i.y) * (vertice_j.x - vertice_i.x));
         ++node_index;
@@ -200,21 +204,22 @@ namespace image
       }
     }
   }
-  inline void DrawVertices(Image &image, RGBA color, glm::ivec2 position, const VertexArray & vertices, int offset = 0)
+  inline void DrawVertices(Image &image, RGBA color, glm::ivec2 position, const VertexArray &vertices, int offset = 0)
   {
-    for(int i = 0; i < vertices.size() - 1; ++i)
+    for (int i = 0; i < vertices.size() - 1; ++i)
     {
-      DrawLine(image, color, vertices[i], vertices[i+1], offset);
+      DrawLine(image, color, vertices[i], vertices[i + 1], offset);
     }
     DrawLine(image, color, vertices[vertices.size() - 1], vertices[0]);
   }
-  inline void Transform(VertexArray & vertices, glm::vec2 translate = glm::vec2(0.0f), glm::vec2 scale = {1.f, 1.f}, float rotate = 0.f)
+  inline void Transform(VertexArray &vertices, glm::vec2 translate = glm::vec2(0.0f), glm::vec2 scale = {1.f, 1.f}, float rotate = 0.f)
   {
     glm::mat4 transform = glm::mat3(1.0f);
     transform = glm::translate(transform, glm::vec3(translate, 1.f));
-    transform = glm::rotate(transform,    glm::radians(rotate), {0.f, 1.f, 0.f});
-    transform = glm::scale(transform,     glm::vec3{scale, 1.f});
+    transform = glm::rotate(transform, glm::radians(rotate), {0.f, 1.f, 0.f});
+    transform = glm::scale(transform, glm::vec3{scale, 1.f});
     std::transform(vertices.begin(), vertices.end(), vertices.begin(),
-    [&transform](const glm::vec2 & v) { return glm::vec2(transform * glm::vec4(v, 1.0f, 1.f));});
+                   [&transform](const glm::vec2 &v)
+                   { return glm::vec2(transform * glm::vec4(v, 1.0f, 1.f)); });
   }
 }

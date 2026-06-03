@@ -60,6 +60,31 @@ void SaveTectonicImage(std::string const & file_name, terrain::tectonic::Map &ma
   }
   image.Save(file_name);
 }
+void DrawConnections(image::Image & image, std::size_t index, voronoi::CellArray const & cells, std::vector<int> &visited_array, std::mt19937 & gen)
+{
+  visited_array[index] = 1;
+  std::vector<glm::vec2> float_vertices;
+  std::transform(cells[index].vertices.begin(), cells[index].vertices.end(), std::back_inserter(float_vertices), [](const glm::ivec2 &v)
+            { return glm::vec2(v); }); 
+  //FillPolygon(image, image::RGBA(gen()), float_vertices);
+  for(auto & neighbor_index : cells[index].neighbors)
+  {
+    if(visited_array[neighbor_index] == 0)
+    {
+      DrawConnections(image, neighbor_index, cells, visited_array, gen);
+    }
+    if(glm::distance(glm::vec2(cells[index].seed), glm::vec2(cells[neighbor_index].seed)) < image.Width() / 2.0)
+      image::DrawLine(image, image::RGBA(0), cells[index].seed, cells[neighbor_index].seed);
+  }
+}
+void SaveConnectionImage(std::string const & file_name, voronoi::CellArray const & cells, int width, int height, int seed)
+{
+  std::mt19937 gen(seed);
+  image::Image image(width, height);
+  std::vector<int> visited_array(cells.size(), 0);
+  DrawConnections(image, 0, cells, visited_array, gen);
+  image.Save(file_name);
+}
 int main(int argc, char **argv)
 {
   int map_width = 6000;
@@ -68,13 +93,15 @@ int main(int argc, char **argv)
   int seed = rd();
   std::mt19937 gen(seed);
   terrain::tectonic::Map map;
-  const int dividator = 100; //std::stoi(argv[1]);
+  const int dividator = 80; //std::stoi(argv[1]);
   const int plate_dividator = 16; //std::stoi(argv[2]);
   auto seeds = voronoi::GenerateJitteredSeeds(map_width, map_height, dividator, dividator, gen());
   voronoi::CellArray cells = voronoi::Generator()(seeds, map_width, map_height);
-  map.Initialize(cells);
-  map.DijkstraNoiseFillGeneratePlates(map_width, map_height, plate_dividator, gen());
+  terrain::tectonic::Map::Parameters terrain_parameters(map_width, map_height, 8, 7, seed);
+  map.Initialize(terrain_parameters, cells);
+  map.DijkstraNoiseFillGeneratePlates();
   SaveImage("voronoi.jpg", cells, map_width, map_height, gen());
   SaveTectonicImage("tectonic.jpg", map, map_width, map_height, gen());
+  SaveConnectionImage("connections.jpg", cells, map_width, map_height, seed);
   return 0;
 }

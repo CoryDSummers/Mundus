@@ -1,4 +1,5 @@
 #include "terrain/tectonic/map-class.h"
+#include <algorithm>
 #include <numbers>
 
 #include <glm/glm.hpp>
@@ -17,15 +18,19 @@ struct PlateExpansion
         return cost > other.cost;
     }
 };
-void terrain::tectonic::Map::Initialize(const GeometryArray &generated_cells)
+
+
+
+void terrain::tectonic::Map::Initialize(Parameters & parameters, const GeometryArray &generated_cells)
 {
-    geometries_ = generated_cells;
-    cell_plate_ids_.assign(geometries_.size(), -1);
+  parameters_ = parameters;
+  geometries_ = generated_cells;
+  cell_plate_ids_.assign(geometries_.size(), -1);
 }
 
 void terrain::tectonic::Map::GeneratePlatesSimple(int map_width, int map_height, int grid_cols, int grid_rows, int seed)
 {
-    voronoi::PointArray raw_plate_seeds = voronoi::GenerateJitteredSeeds(map_width, map_height, grid_cols, grid_rows, seed);
+    voronoi::IntegerPointArray raw_plate_seeds = voronoi::GenerateJitteredSeeds(map_width, map_height, grid_cols, grid_rows, seed);
     std::mt19937 gen(seed);
     std::uniform_real_distribution<float> vel_dist(-1.0f, 1.0f);
     std::normal_distribution<float> size_weight(1.f, .33f);
@@ -33,7 +38,7 @@ void terrain::tectonic::Map::GeneratePlatesSimple(int map_width, int map_height,
     plates_.reserve(raw_plate_seeds.size());
     for (const auto &seed : raw_plate_seeds)
     {
-        plates_.push_back({seed, glm::normalize(glm::vec2(vel_dist(gen), vel_dist(gen))), glm::vec2(std::clamp(size_weight(gen), 0.f, 2.f), std::clamp(size_weight(gen), 0.f, 2.f))});
+        plates_.push_back({seed, glm::normalize(glm::vec2(vel_dist(gen), vel_dist(gen)))});
     }
     for (std::size_t cell_index = 0; cell_index < geometries_.size(); ++cell_index)
     {
@@ -41,7 +46,7 @@ void terrain::tectonic::Map::GeneratePlatesSimple(int map_width, int map_height,
         int closest_plate_index = -1;
         for (std::size_t plate_index = 0; plate_index < plates_.size(); ++plate_index)
         {
-            float distance = math::GetCylindricalDistance(geometries_[cell_index].seed, plates_[plate_index].center_seed, map_width);
+            float distance = math::GetCylindricalDistance(geometries_[cell_index].seed, plates_[plate_index].center_seed, static_cast<float>(map_width));
             if (distance < min_distance)
             {
                 min_distance = distance;
@@ -51,48 +56,79 @@ void terrain::tectonic::Map::GeneratePlatesSimple(int map_width, int map_height,
         cell_plate_ids_[cell_index] = closest_plate_index;
     }
 }
-void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates(int map_width, int map_height, int plate_count, int seed)
+void terrain::tectonic::Map::InitializePlates(std::vector<PlateParameters> & plate_parameters, std::uniform_int_distribution<int> & cell_picker, std::mt19937 & gen)
 {
-    std::mt19937 gen(seed);
-    std::uniform_real_distribution<float> vel_dist(-1.0f, 1.0f);
-    std::uniform_real_distribution<float> noise_dist(1.0f, 3.0f);
+  const std::uint32_t k_total_plate_count = parameters_.major_plate_count + parameters_.minor_plate_count;
+  const float min_seed_distance = parameters_.map_width / 12.0f;
+  std::uniform_real_distribution<float> dist_normalized(-1.0f, 1.0f);
+  std::uniform_real_distribution<float> bias_dist(0.0f, 0.9f);
+  plates_.clear();
+  for (int i = 0; i < k_total_plate_count; ++i)
+  {
+      int starting_cell = GetSpacedStartingCell(cell_picker, min_seed_distance, gen);
+      bool is_major = (i < parameters_.major_plate_count);
+      float cost_multiplier = is_major ? 0.2f : 1.0f;
+      glm::vec2 growth_axis = glm::normalize(glm::vec2(dist_normalized(gen), dist_normalized(gen)));
+      // Initialize plate data
+      plates_.push_back({
+          geometries_[starting_cell].seed,
+          glm::normalize(glm::vec2(dist_normalized(gen), dist_normalized(gen))),
+          static_cast<std::size_t>(starting_cell)
+      });
+      plate_parameters.push_back(
+        {
+          growth_axis,
+          cost_multiplier,
+          bias_dist(gen)
+        }
+      );
+      cell_plate_ids_[starting_cell] = i;
+  }
+}
+int terrain::tectonic::Map::GetSpacedStartingCell(std::uniform_int_distribution<int> & cell_picker, const float min_distance, std::mt19937 & gen)
+{
+  int starting_cell = -1;
+  bool valid_seed = false;
+  int attempts = 0;
+  // Keep picking until we find a seed that is far enough away from all other seeds
+  while (!valid_seed && attempts < 100) 
+  {
+      starting_cell = cell_picker(gen);
+      if (cell_plate_ids_[starting_cell] != -1) continue;
+
+      valid_seed = true;
+      for (const auto& existing_plate : plates_) 
+      {
+          float dist_to_existing = math::GetCylindricalDistance(
+              geometries_[starting_cell].seed, 
+              existing_plate.center_seed, 
+              parameters_.map_width
+          );
+          
+          if (dist_to_existing < min_distance) {
+              valid_seed = false;
+              break;
+          }
+      }
+      ++attempts;
+  }
+  return starting_cell;  
+}
+void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates()
+{
+    std::vector<PlateParameters> plate_generation_parameters;
+    std::mt19937 gen(parameters_.seed);
     cell_plate_ids_.assign(geometries_.size(), -1);
-    plates_.clear();
     std::priority_queue<PlateExpansion, std::vector<PlateExpansion>, std::greater<PlateExpansion>> queue;
     // 2. Pick random Voronoi cells to act as our initial Plate Seeds
     std::uniform_int_distribution<int> cell_picker(0, geometries_.size() - 1);
-    for (int i = 0; i < plate_count; ++i)
-    {
-        int starting_cell = cell_picker(gen);
-
-        // Ensure we don't pick the same cell twice
-        while (cell_plate_ids_[starting_cell] != -1)
-        {
-            starting_cell = cell_picker(gen);
-        }
-
-        // Initialize plate data
-        plates_.push_back({
-            geometries_[starting_cell].seed,
-            glm::normalize(glm::vec2(vel_dist(gen), vel_dist(gen))),
-            glm::vec2(1.f, 1.f) // You can still vary size weight if desired
-        });
-
-        // Claim the starting cell and push it to the queue with 0 cost
-        cell_plate_ids_[starting_cell] = i;
-        for (int neighbor_index : geometries_[starting_cell].neighbors)
-        {
-            if (cell_plate_ids_[neighbor_index] == -1)
-            {
-                float dist = math::GetCylindricalDistance(
-                    geometries_[starting_cell].seed,
-                    geometries_[neighbor_index].seed,
-                    map_width);
-
-                float step_cost = dist * noise_dist(gen);
-                queue.push({step_cost, neighbor_index, i});
-            }
-        }
+    std::uniform_real_distribution<float> noise_dist(1.0f, 3.0f);
+    InitializePlates(plate_generation_parameters, cell_picker, gen);
+    for(int i = 0; i < plates_.size(); ++i){
+      for(auto & neighbor_index : geometries_[plates_[i].seed_cell_index].neighbors)
+      {
+        queue.push({0.0f, neighbor_index, i});
+      }
     }
     // 3. Grow the plates via Dijkstra's Algorithm
     while (!queue.empty())
@@ -104,8 +140,8 @@ void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates(int map_width, int 
             continue;
         }
         cell_plate_ids_[current.cell_index] = current.plate_id;
-        // Iterate through the adjacent neighbors of this Voronoi cell
-        // (You will need to implement/call your adjacency list here)
+        const Plate           & active_plate            = plates_[current.plate_id];
+        const PlateParameters & active_plate_parameters = plate_generation_parameters[current.plate_id];
         for (int neighbor_index : geometries_[current.cell_index].neighbors)
         {
 
@@ -114,17 +150,22 @@ void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates(int map_width, int 
             {
                 continue;
             }
-
-            // Calculate cost to move to this neighbor.
-            // Distance ensures general compactness, noise creates jagged edges.
+            glm::vec2 neighbor_seed = geometries_[neighbor_index].seed;
             float dist = math::GetCylindricalDistance(
                 geometries_[current.cell_index].seed,
-                geometries_[neighbor_index].seed,
-                map_width);
-
-            float step_cost = dist * noise_dist(gen);
+                neighbor_seed,
+                parameters_.map_width
+            );
+            glm::vec2 direction_to_neighbor = math::GetCylindricalDirectionVector(active_plate.center_seed, neighbor_seed, static_cast<float>(parameters_.map_width));
+            float alignment = std::abs(glm::dot(direction_to_neighbor, active_plate_parameters.growth_axis));
+            float directional_bias = 1.0f - (alignment * active_plate_parameters.bias_strength);
+            directional_bias = std::max(directional_bias, 0.3f);
+            
+            float ideal_radius = parameters_.map_width / 15.0f; // Adjust this divisor based on your map size
+            float elongation_penalty = 1.0f + std::pow((dist / ideal_radius), 2.0f);
+            float step_cost = dist * noise_dist(gen) * directional_bias * active_plate_parameters.base_cost_multiplier * elongation_penalty;
             float new_cost = current.cost + step_cost;
-
+              
             // Claim the cell immediately so other plates don't queue it
             // cell_plate_ids_[neighbor_index] = current.plate_id;
 
@@ -132,7 +173,7 @@ void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates(int map_width, int 
             queue.push({new_cost, neighbor_index, current.plate_id});
         }
     }
-    float avg_area = static_cast<float>(map_width * map_height) / geometries_.size();
+    float avg_area = static_cast<float>(parameters_.map_width * parameters_.map_height) / geometries_.size();
     float avg_cell_width = std::sqrt(avg_area);
 
     // 15% of the average width crumples the edges without breaking the geometry
@@ -155,7 +196,7 @@ void terrain::tectonic::Map::WarpPlateBoundaries(int map_width, float warp_stren
         // Iterate through all vertices of this specific cell
         for (auto &vertex : geometries_[cell_index].vertices)
         {
-            int normalized_x = vertex.x % map_width;
+            int normalized_x = std::fmod(vertex.x, static_cast<float>(map_width));
             if (normalized_x < 0)
             {
                 normalized_x += map_width;

@@ -16,7 +16,7 @@ namespace terrain::math
     };
   template<
     Vector2D VectorType,
-    typename ScalarType = std::decay_t<decltype(std::declval<Vector2D>().x)>
+    typename ScalarType = std::decay_t<decltype(std::declval<VectorType>().x)>
   >
   inline float GetCylindricalDistance(const VectorType & p1, const VectorType & p2, ScalarType map_width)
   {
@@ -34,5 +34,20 @@ namespace terrain::math
     }
     
     return std::sqrt(dx * dx + dy * dy);
+  }
+  template<
+    Vector2D VectorType,
+    typename ScalarType = std::decay_t<decltype(std::declval<VectorType>().x)>
+  >
+  inline VectorType GetCylindricalDirectionVector(const VectorType & current, const VectorType & neighbor, const ScalarType map_width)
+  {
+    const ScalarType k_half_map_width = map_width / static_cast<ScalarType>(2.0);
+    float dx = neighbor.x - current.x;
+    float dy = neighbor.y - current.y;
+    if(dx > k_half_map_width)
+      dx -= map_width;
+    else if(dx < -k_half_map_width)
+      dx += map_width;
+    return glm::normalize(glm::vec2{dx, dy});
   }
 }

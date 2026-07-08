@@ -22,14 +22,14 @@ namespace mundus::terrain::tectonic
       inline PlateIDArray     & GetPlateIDs() { return cell_plate_ids_; }
       inline GeometryArray    & GetGeometries() { return geometries_; }
       
-      inline void SetPlates(PlateArray & plates) {plates_ = plate; }
+      inline void SetPlates(PlateArray & plates) {plates_ = plates; }
       const Parameters & GetParameters() const { return parameters_; }
       void Initialize(Parameters & parameters, const GeometryArray & generated_cells);
       void GeneratePlatesSimple(int map_width, int map_height, int grid_cols, int grid_rows, int seed);
-      void DijkstraNoiseFillGeneratePlates();
+      //void DijkstraNoiseFillGeneratePlates();
     private:
       void WarpPlateBoundaries(int map_width, float warp_strength, float frequency, int seed);
-      void InitializePlates(std::vector<PlateParameters> & generation_parameters, std::uniform_int_distribution<int> & cell_picker, std::mt19937 & rng_generator);
+      //void InitializePlates(std::vector<Plate::Parameters> & generation_parameters, std::uniform_int_distribution<int> & cell_picker, std::mt19937 & rng_generator);
       int  GetSpacedStartingCell(std::uniform_int_distribution<int> &, const float min_distance, std::mt19937 & gen);
       Parameters    parameters_;
       GeometryArray geometries_;

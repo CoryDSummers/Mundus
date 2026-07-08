@@ -37,16 +37,16 @@ void SaveImage(std::string const &file_name, voronoi::CellArray const &cells, in
 }
 void SaveTectonicImage(std::string const & file_name, mundus::terrain::tectonic::Map &map, int map_width, int map_height, int seed)
 {
-  const std::size_t k_cell_count = map.GetGeometryArray().size();
+  const std::size_t k_cell_count = map.GetGeometries().size();
   std::mt19937 gen(seed);
   image::Image image(map_width, map_height);
 
-  std::vector<image::RGBA> plate_colors(map.GetPlateArray().size());
+  std::vector<image::RGBA> plate_colors(map.GetPlates().size());
   std::generate(plate_colors.begin(), plate_colors.end(), [&]() { return image::RGBA(gen()); });
   for(std::size_t i = 0; i < k_cell_count; ++i)
   {
-    auto & cell = map.GetGeometryArray()[i];
-    int plate_id = map.GetPlateIDArray()[i];
+    auto & cell = map.GetGeometries()[i];
+    int plate_id = map.GetPlateIDs()[i];
     std::vector<glm::vec2> float_vertices;
     std::transform(cell.vertices.begin(), cell.vertices.end(), std::back_inserter(float_vertices), [](const glm::ivec2 &v)
                 { return glm::vec2(v); }); 
@@ -54,7 +54,7 @@ void SaveTectonicImage(std::string const & file_name, mundus::terrain::tectonic:
       continue;
     FillPolygon(image, plate_colors[plate_id], float_vertices);
   }
-  for(auto & plate : map.GetPlateArray())
+  for(auto & plate : map.GetPlates())
   {
     DrawCross(image, image::RGBA(0xFFFFFFFF), plate.center_seed, 8);
   }
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
   voronoi::CellArray cells = voronoi::Generator()(seeds, map_width, map_height);
   mundus::terrain::tectonic::Map::Parameters terrain_parameters(map_width, map_height, 8, 7, seed);
   map.Initialize(terrain_parameters, cells);
-  map.DijkstraNoiseFillGeneratePlates();
+  //map.DijkstraNoiseFillGeneratePlates();
   SaveImage("voronoi.jpg", cells, map_width, map_height, gen());
   SaveTectonicImage("tectonic.jpg", map, map_width, map_height, gen());
   SaveConnectionImage("connections.jpg", cells, map_width, map_height, seed);

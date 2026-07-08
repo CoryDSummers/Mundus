@@ -47,6 +47,7 @@ void terrain::tectonic::Map::GeneratePlatesSimple(int map_width, int map_height,
         cell_plate_ids_[cell_index] = closest_plate_index;
     }
 }
+/*
 void terrain::tectonic::Map::InitializePlates(std::vector<PlateParameters> & plate_parameters, std::uniform_int_distribution<int> & cell_picker, std::mt19937 & gen)
 {
   const std::uint32_t k_total_plate_count = parameters_.major_plate_count + parameters_.minor_plate_count;
@@ -75,7 +76,7 @@ void terrain::tectonic::Map::InitializePlates(std::vector<PlateParameters> & pla
       );
       cell_plate_ids_[starting_cell] = i;
   }
-}
+}*/
 int terrain::tectonic::Map::GetSpacedStartingCell(std::uniform_int_distribution<int> & cell_picker, const float min_distance, std::mt19937 & gen)
 {
   int starting_cell = -1;
@@ -105,6 +106,7 @@ int terrain::tectonic::Map::GetSpacedStartingCell(std::uniform_int_distribution<
   }
   return starting_cell;  
 }
+/*
 void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates()
 {
     std::priority_queue<PlateExpansion, std::vector<PlateExpansion>, std::greater<PlateExpansion>> queue;
@@ -180,7 +182,7 @@ void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates()
 
     // Execute the domain warp
     //WarpPlateBoundaries(map_width, safe_warp_strength, frequency, seed);
-}
+}*/
 void terrain::tectonic::Map::WarpPlateBoundaries(int map_width, float warp_strength, float frequency, int seed)
 {
     const float k_radius = map_width / (2.0f * std::numbers::pi_v<float>);

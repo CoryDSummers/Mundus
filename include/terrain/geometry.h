@@ -7,7 +7,7 @@
 #include <cmath>
 
 #include <glm/vec2.hpp>
-namespace terrain::math
+namespace mundus::terrain::math
 {
   template<typename T>
     concept Vector2D = requires(T v) {

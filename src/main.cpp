@@ -35,7 +35,7 @@ void SaveImage(std::string const &file_name, voronoi::CellArray const &cells, in
   }
   image.Save(file_name);
 }
-void SaveTectonicImage(std::string const & file_name, terrain::tectonic::Map &map, int map_width, int map_height, int seed)
+void SaveTectonicImage(std::string const & file_name, mundus::terrain::tectonic::Map &map, int map_width, int map_height, int seed)
 {
   const std::size_t k_cell_count = map.GetGeometryArray().size();
   std::mt19937 gen(seed);
@@ -92,12 +92,12 @@ int main(int argc, char **argv)
   std::random_device rd;
   int seed = rd();
   std::mt19937 gen(seed);
-  terrain::tectonic::Map map;
+  mundus::terrain::tectonic::Map map;
   const int dividator = 80; //std::stoi(argv[1]);
   const int plate_dividator = 16; //std::stoi(argv[2]);
   auto seeds = voronoi::GenerateJitteredSeeds(map_width, map_height, dividator, dividator, gen());
   voronoi::CellArray cells = voronoi::Generator()(seeds, map_width, map_height);
-  terrain::tectonic::Map::Parameters terrain_parameters(map_width, map_height, 8, 7, seed);
+  mundus::terrain::tectonic::Map::Parameters terrain_parameters(map_width, map_height, 8, 7, seed);
   map.Initialize(terrain_parameters, cells);
   map.DijkstraNoiseFillGeneratePlates();
   SaveImage("voronoi.jpg", cells, map_width, map_height, gen());

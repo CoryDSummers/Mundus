@@ -3,7 +3,8 @@
 #include <random>
 #include "terrain/tectonic/plate-class.h"
 #include "voronoi/cell.h"
-namespace terrain::tectonic
+#include "terrain/tectonic/types.h"
+namespace mundus::terrain::tectonic
 {
   class Map
   {
@@ -16,15 +17,13 @@ namespace terrain::tectonic
         std::uint32_t minor_plate_count; 
         std::int32_t  seed;
       };
-      using Geometry      = voronoi::Cell;
-      using GeometryArray = std::vector<Geometry>;
-      using PlateArray    = std::vector<tectonic::Plate>;
-      using PlateID       = int;
-      using PlateIDArray  = std::vector<PlateID>;
       Map() = default;
-      PlateArray & GetPlateArray() { return plates_; }
-      PlateIDArray & GetPlateIDArray() { return cell_plate_ids_; }
-      GeometryArray & GetGeometryArray() { return geometries_; }
+      inline PlateArray       & GetPlates() { return plates_; }
+      inline PlateIDArray     & GetPlateIDs() { return cell_plate_ids_; }
+      inline GeometryArray    & GetGeometries() { return geometries_; }
+      
+      inline void SetPlates(PlateArray & plates) {plates_ = plate; }
+      const Parameters & GetParameters() const { return parameters_; }
       void Initialize(Parameters & parameters, const GeometryArray & generated_cells);
       void GeneratePlatesSimple(int map_width, int map_height, int grid_cols, int grid_rows, int seed);
       void DijkstraNoiseFillGeneratePlates();

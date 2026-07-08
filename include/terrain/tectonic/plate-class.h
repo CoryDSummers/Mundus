@@ -1,19 +1,16 @@
 #pragma once
+#include <cstdint>
 #include <glm/vec2.hpp>
-
-namespace terrain::tectonic
+#include "terrain/tectonic/types.h"
+namespace mundus::terrain::tectonic
 {
-  struct PlateParameters
+  class Plate
   {
-    glm::vec2 growth_axis;
-    float base_cost_multiplier;
-    float bias_strength;
-  };
-  struct Plate
-  {
-    glm::vec2 center_seed;
-    glm::vec2 velocity;
-    std::size_t seed_cell_index;
+    public:
+      static constexpr PlateID k_unassigned = -1;
+      glm::vec2 center_seed;
+      glm::vec2 velocity;
+      CellIndex seed_cell_index;
   };
   
 }

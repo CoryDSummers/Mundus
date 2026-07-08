@@ -7,6 +7,8 @@ namespace image
   union RGBA
   {
     std::uint32_t value;
-    std::uint8_t r, b, g, a;
+    struct{
+      std::uint8_t r, b, g, a;
+    };
   };
 }

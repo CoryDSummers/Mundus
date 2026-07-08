@@ -1,23 +1,14 @@
 #include "terrain/tectonic/map-class.h"
 #include <algorithm>
+#include <iostream>
 #include <numbers>
 
 #include <glm/glm.hpp>
 #include "voronoi/jittered-cell.h"
 #include "terrain/geometry.h"
 #include "noise/perlin-noise-class.hpp"
-struct PlateExpansion
-{
-    float cost;
-    int cell_index;
-    int plate_id;
 
-    // We want the lowest cost to bubble to the top
-    bool operator>(const PlateExpansion &other) const
-    {
-        return cost > other.cost;
-    }
-};
+using namespace mundus;
 
 
 
@@ -38,7 +29,7 @@ void terrain::tectonic::Map::GeneratePlatesSimple(int map_width, int map_height,
     plates_.reserve(raw_plate_seeds.size());
     for (const auto &seed : raw_plate_seeds)
     {
-        plates_.push_back({seed, glm::normalize(glm::vec2(vel_dist(gen), vel_dist(gen)))});
+        plates_.push_back(Plate{seed, glm::normalize(glm::vec2(vel_dist(gen), vel_dist(gen))), -1});
     }
     for (std::size_t cell_index = 0; cell_index < geometries_.size(); ++cell_index)
     {
@@ -65,15 +56,15 @@ void terrain::tectonic::Map::InitializePlates(std::vector<PlateParameters> & pla
   plates_.clear();
   for (int i = 0; i < k_total_plate_count; ++i)
   {
-      int starting_cell = GetSpacedStartingCell(cell_picker, min_seed_distance, gen);
-      bool is_major = (i < parameters_.major_plate_count);
+      int   starting_cell = GetSpacedStartingCell(cell_picker, min_seed_distance, gen);
+      bool  is_major = (i < parameters_.major_plate_count);
       float cost_multiplier = is_major ? 0.2f : 1.0f;
       glm::vec2 growth_axis = glm::normalize(glm::vec2(dist_normalized(gen), dist_normalized(gen)));
       // Initialize plate data
       plates_.push_back({
           geometries_[starting_cell].seed,
           glm::normalize(glm::vec2(dist_normalized(gen), dist_normalized(gen))),
-          static_cast<std::size_t>(starting_cell)
+          static_cast<CellIndex>(starting_cell)
       });
       plate_parameters.push_back(
         {
@@ -116,14 +107,14 @@ int terrain::tectonic::Map::GetSpacedStartingCell(std::uniform_int_distribution<
 }
 void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates()
 {
-    std::vector<PlateParameters> plate_generation_parameters;
-    std::mt19937 gen(parameters_.seed);
-    cell_plate_ids_.assign(geometries_.size(), -1);
     std::priority_queue<PlateExpansion, std::vector<PlateExpansion>, std::greater<PlateExpansion>> queue;
+    std::vector<PlateParameters> plate_generation_parameters;
+    std::mt19937                 gen(parameters_.seed);
     // 2. Pick random Voronoi cells to act as our initial Plate Seeds
-    std::uniform_int_distribution<int> cell_picker(0, geometries_.size() - 1);
+    std::uniform_int_distribution<int>    cell_picker(0, geometries_.size() - 1);
     std::uniform_real_distribution<float> noise_dist(1.0f, 3.0f);
     InitializePlates(plate_generation_parameters, cell_picker, gen);
+    //Initialize queue with immediate neighbors
     for(int i = 0; i < plates_.size(); ++i){
       for(auto & neighbor_index : geometries_[plates_[i].seed_cell_index].neighbors)
       {
@@ -131,6 +122,7 @@ void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates()
       }
     }
     // 3. Grow the plates via Dijkstra's Algorithm
+    int queue_max_size = 0;
     while (!queue.empty())
     {
         PlateExpansion current = queue.top();
@@ -171,14 +163,20 @@ void terrain::tectonic::Map::DijkstraNoiseFillGeneratePlates()
 
             // Push the neighbor into the queue to continue growing
             queue.push({new_cost, neighbor_index, current.plate_id});
+            if(queue.size() > queue_max_size)
+            {
+              queue_max_size = queue.size();
+            }
         }
     }
-    float avg_area = static_cast<float>(parameters_.map_width * parameters_.map_height) / geometries_.size();
-    float avg_cell_width = std::sqrt(avg_area);
+    std::cout << "Queue-Max-Size: " << queue_max_size << "\n";
+    std::cout << "Number of Cells: "  << geometries_.size() << '\n';
+    //float avg_area = static_cast<float>(parameters_.map_width * parameters_.map_height) / geometries_.size();
+    //float avg_cell_width = std::sqrt(avg_area);
 
     // 15% of the average width crumples the edges without breaking the geometry
-    float safe_warp_strength = avg_cell_width * 0.15f;
-    float frequency = 0.05f;
+    //float safe_warp_strength = avg_cell_width * 0.15f;
+    //float frequency = 0.05f;
 
     // Execute the domain warp
     //WarpPlateBoundaries(map_width, safe_warp_strength, frequency, seed);
